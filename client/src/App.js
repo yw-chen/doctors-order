@@ -1,12 +1,11 @@
-import logo from './logo.svg';
 import './App.css';
+import FormDialog from './components/OrderList'
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        
-      </header>
+      <div>Patient List:</div>
+      <FormDialog></FormDialog>
     </div>
   );
 }

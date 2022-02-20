@@ -15,7 +15,7 @@ app.use(bodyParser.json())
 
 db.on('error', console.error.bind(console, 'MongoDB connection error:'))
 
-app.get('/',(req,res) => {res.send('Hello World!')})
+app.get('/',(req,res) => {res.send('Server is running!')})
 
 app.use('/api',patientRouter)
 app.use('/api',orderRouter)
