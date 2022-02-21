@@ -33,7 +33,7 @@ createOrder = (req, res) => {
 }
 
 updateOrder = async (req,res)=>{
-    const body = res.body
+    const body = req.body
     if(!body){
         return res.status(400).json({ 
             success: false, 
@@ -41,13 +41,8 @@ updateOrder = async (req,res)=>{
         })
     }
 
-    Order.findOne({Id: req.params.id}, (err, order)=>{
-        if(err){
-            return res.status(404).json({
-                err,
-                message: 'Order not found',
-            })
-        }
+    Order.findOne({Id: req.params.id})
+    .then((order)=>{
         order.Message = body.Message
         
         order.save()

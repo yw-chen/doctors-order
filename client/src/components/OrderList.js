@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios'
-import { List, ListItemButton, ListItemText } from '@mui/material';
+import { DialogContentText, List, ListItemButton, ListItemText } from '@mui/material';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Dialog from '@mui/material/Dialog';
@@ -9,51 +9,82 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 
 function FormDialog() {
-    const [textDisabled, settextDisabled] = useState(true);
+    const [showUpdate, setShowUpdate] = useState(false);
     const [show, setShow] = useState(false);
-    const [order, setOrder] = useState();
+    const [dialogMessage, setDialogMessage] = useState("");
     const [patients, setPaitents] = useState([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [selectedPatientName, setSelectedPatientName] = useState('');
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(false);    
+
+    const fetchPatients = async () => {
+        const res = await axios.get("http://localhost:3000/api/patients");
+        setPaitents(res.data.data);
+    }     
 
     const handleCreateNewOrder = () => {
-        settextDisabled(false);
+        setDialogMessage("Please create an order for:");
+        document.getElementById("message").value = "";
         setShow(true);
+        setShowUpdate(false);
     };
 
     const handleOrderCancel = () => {
-        setOrder();
-        settextDisabled(true);
-        setShow(false);
+        handleClose();
     };
 
     const handleOrderSave = () => {
-        const createOrder = async () => {
-            await axios.post("http://localhost:3000/api/order",{
-                Id:patients.at(selectedIndex).Id,
-                Message:document.getElementById("message").value
+        const getOrderLastId = () => {
+            axios.get("http://localhost:3000/api/table/orders").then((res) => {
+                createOrder(res.data.data.LastId + 1);
+            });
+
+        }
+
+        const createOrder = (id) => {
+            axios.post("http://localhost:3000/api/order", {
+                Id: id,
+                Message: document.getElementById("message").value
+            }).then(() =>{
+                updateTable(id);
+            });
+        }       
+
+        const updatePatient = (id) => {
+            axios.put("http://localhost:3000/api/patient/" + patients.at(selectedIndex).Id, {
+                OrderId: id
+            }).then(() =>{
+                fetchPatients();
+            }).catch(error => console.log(error));
+        }
+
+        const updateTable = (id) => {
+            axios.put("http://localhost:3000/api/table/orders", {
+                LastId: id
+            }).then(() =>{
+                updatePatient(id);
             });
         }
 
-        const updateOrder = async () => {
-            await axios.put("http://localhost:3000/api/order/"+patients.at(selectedIndex).OrderId,{
-                Message:document.getElementById("message").value
+        getOrderLastId();
+        handleClose();
+    };
+
+    const handleOrderUpdate = () => {
+        const updateOrder = () => {
+            axios.put("http://localhost:3000/api/order/" + patients.at(selectedIndex).OrderId, {
+                Message: document.getElementById("message").value
             });
         }
 
-        if(order){
-            updateOrder();
-        }else{
-            createOrder();
-        }
+        updateOrder();
         handleClose();
     };
 
     const handleClose = () => {
         setOpen(false);
-        settextDisabled(true);
         setShow(false);
+        setShowUpdate(false);
     };
 
     const handleListItemClick = (event, index) => {
@@ -61,20 +92,22 @@ function FormDialog() {
         setSelectedPatientName(patients.at(index).Name)
         setOpen(true);
 
-        const fetchOrder = async ()=>{
+        const fetchOrder = async () => {
             await axios.get("http://localhost:3000/api/order/" + patients.at(index).OrderId).then((res) => {
-                setOrder(res.data.data); 
                 document.getElementById("message").value = res.data.data.Message;
-            }).catch((err)=>{});                     
+            }).catch((err) => { });
         }
-        fetchOrder();
+        if (patients.at(index).OrderId > 0) {
+            fetchOrder();
+            setDialogMessage("This is current order of:");
+            setShowUpdate(true);
+        } else {
+            setDialogMessage("Please create an order for:");
+            setShow(true);
+        }
     };
 
-    useEffect(() => {
-        const fetchPatients = async () => {
-            const res = await axios.get("http://localhost:3000/api/patients");
-            setPaitents(res.data.data);
-        }
+    useEffect(() => {           
         fetchPatients();
     }, [])
 
@@ -98,6 +131,8 @@ function FormDialog() {
                 <DialogTitle>
                     <Button onClick={handleCreateNewOrder} sx={{ maxWidth: 200, display: 'block', margin: 'auto', float: 'right' }}>新增Order</Button>
                 </DialogTitle>
+                <DialogContent></DialogContent>
+                <DialogContentText sx={{display:'block', margin:'auto'}}>{dialogMessage}</DialogContentText>
                 <DialogContent>
                     <TextField
                         disabled
@@ -111,7 +146,6 @@ function FormDialog() {
                         variant="standard"
                     />
                     <TextField
-                        disabled = {textDisabled}
                         autoFocus
                         margin="dense"
                         id="message"
@@ -122,7 +156,9 @@ function FormDialog() {
                     />
                 </DialogContent>
                 <DialogActions>
-                    {show && <Button onClick={handleOrderCancel} disabled={textDisabled}>Cancel</Button>}
+                    {showUpdate && <Button onClick={handleOrderCancel}>Close</Button>}
+                    {showUpdate && <Button onClick={handleOrderUpdate}>Update</Button>}
+                    {show && <Button onClick={handleOrderCancel}>Cancel</Button>}
                     {show && <Button onClick={handleOrderSave}>Save</Button>}
                 </DialogActions>
             </Dialog>
